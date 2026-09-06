@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
@@ -8,12 +9,10 @@ local player = Players.LocalPlayer
 --==================================================
 
 local AUTO_GRAB_ATIVO = true
-
--- Guarda o HoldDuration original de cada prompt
 local duracoesOriginais = {}
 
 --==================================================
--- FUNÇÃO DO AUTO GRAB
+-- AUTO GRAB
 --==================================================
 
 local function configurarPrompt(prompt)
@@ -21,7 +20,6 @@ local function configurarPrompt(prompt)
 		return
 	end
 
-	-- Salva o valor original
 	if duracoesOriginais[prompt] == nil then
 		duracoesOriginais[prompt] = prompt.HoldDuration
 	end
@@ -33,12 +31,10 @@ local function configurarPrompt(prompt)
 	end
 end
 
--- Prompts que já existem
 for _, objeto in ipairs(workspace:GetDescendants()) do
 	configurarPrompt(objeto)
 end
 
--- Prompts criados depois
 workspace.DescendantAdded:Connect(function(objeto)
 	if objeto:IsA("ProximityPrompt") then
 		task.wait()
@@ -55,19 +51,22 @@ gui.Name = "NunesAutoGrab"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- Tela/painel
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 150)
 frame.Position = UDim2.new(0.5, -150, 0.5, -75)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
+frame.Active = true
 frame.Parent = gui
 
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = frame
 
--- Título
+--==================================================
+-- TÍTULO
+--==================================================
+
 local titulo = Instance.new("TextLabel")
 titulo.Size = UDim2.new(1, 0, 0, 45)
 titulo.Position = UDim2.new(0, 0, 0, 8)
@@ -78,7 +77,10 @@ titulo.TextScaled = true
 titulo.Font = Enum.Font.GothamBold
 titulo.Parent = frame
 
--- Nome do sistema
+--==================================================
+-- NOME
+--==================================================
+
 local nome = Instance.new("TextLabel")
 nome.Size = UDim2.new(0, 150, 0, 35)
 nome.Position = UDim2.new(0, 20, 0, 65)
@@ -106,19 +108,17 @@ local switchCorner = Instance.new("UICorner")
 switchCorner.CornerRadius = UDim.new(1, 0)
 switchCorner.Parent = switch
 
--- Bolinha do interruptor
 local bola = Instance.new("Frame")
 bola.Size = UDim2.new(0, 28, 0, 28)
 bola.Position = UDim2.new(1, -31, 0.5, -14)
-bola.BorderSizePixel = 0
 bola.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+bola.BorderSizePixel = 0
 bola.Parent = switch
 
 local bolaCorner = Instance.new("UICorner")
 bolaCorner.CornerRadius = UDim.new(1, 0)
 bolaCorner.Parent = bola
 
--- Texto de status
 local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, -40, 0, 25)
 status.Position = UDim2.new(0, 20, 0, 112)
@@ -129,7 +129,7 @@ status.TextXAlignment = Enum.TextXAlignment.Left
 status.Parent = frame
 
 --==================================================
--- ATUALIZAR VISUAL
+-- VISUAL DO INTERRUPTOR
 --==================================================
 
 local function atualizarVisual()
@@ -161,13 +161,12 @@ local function atualizarVisual()
 end
 
 --==================================================
--- CLICAR NO INTERRUPTOR
+-- ATIVAR / DESATIVAR
 --==================================================
 
 switch.MouseButton1Click:Connect(function()
 	AUTO_GRAB_ATIVO = not AUTO_GRAB_ATIVO
 
-	-- Aplica a mudança em todos os prompts
 	for prompt, _ in pairs(duracoesOriginais) do
 		if prompt and prompt.Parent then
 			configurarPrompt(prompt)
@@ -176,5 +175,61 @@ switch.MouseButton1Click:Connect(function()
 
 	atualizarVisual()
 end)
+
+--==================================================
+-- ARRASTAR A GUI
+--==================================================
+
+local dragging = false
+local dragStart
+local startPosition
+local dragInput
+
+local function atualizarPosicao(input)
+	local delta = input.Position - dragStart
+
+	frame.Position = UDim2.new(
+		startPosition.X.Scale,
+		startPosition.X.Offset + delta.X,
+		startPosition.Y.Scale,
+		startPosition.Y.Offset + delta.Y
+	)
+end
+
+-- Começa a arrastar
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = true
+		dragStart = input.Position
+		startPosition = frame.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+-- Detecta movimento
+frame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input == dragInput then
+		atualizarPosicao(input)
+	end
+end)
+
+--==================================================
+-- INICIAR
+--==================================================
 
 atualizarVisual()
