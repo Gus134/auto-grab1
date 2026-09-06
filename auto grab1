@@ -1,0 +1,180 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+--==================================================
+-- CONFIGURAÇÕES
+--==================================================
+
+local AUTO_GRAB_ATIVO = true
+
+-- Guarda o HoldDuration original de cada prompt
+local duracoesOriginais = {}
+
+--==================================================
+-- FUNÇÃO DO AUTO GRAB
+--==================================================
+
+local function configurarPrompt(prompt)
+	if not prompt:IsA("ProximityPrompt") then
+		return
+	end
+
+	-- Salva o valor original
+	if duracoesOriginais[prompt] == nil then
+		duracoesOriginais[prompt] = prompt.HoldDuration
+	end
+
+	if AUTO_GRAB_ATIVO then
+		prompt.HoldDuration = 0
+	else
+		prompt.HoldDuration = duracoesOriginais[prompt]
+	end
+end
+
+-- Prompts que já existem
+for _, objeto in ipairs(workspace:GetDescendants()) do
+	configurarPrompt(objeto)
+end
+
+-- Prompts criados depois
+workspace.DescendantAdded:Connect(function(objeto)
+	if objeto:IsA("ProximityPrompt") then
+		task.wait()
+		configurarPrompt(objeto)
+	end
+end)
+
+--==================================================
+-- GUI
+--==================================================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "NunesAutoGrab"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Tela/painel
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 150)
+frame.Position = UDim2.new(0.5, -150, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+-- Título
+local titulo = Instance.new("TextLabel")
+titulo.Size = UDim2.new(1, 0, 0, 45)
+titulo.Position = UDim2.new(0, 0, 0, 8)
+titulo.BackgroundTransparency = 1
+titulo.Text = "Feito por Nunes"
+titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
+titulo.TextScaled = true
+titulo.Font = Enum.Font.GothamBold
+titulo.Parent = frame
+
+-- Nome do sistema
+local nome = Instance.new("TextLabel")
+nome.Size = UDim2.new(0, 150, 0, 35)
+nome.Position = UDim2.new(0, 20, 0, 65)
+nome.BackgroundTransparency = 1
+nome.Text = "AUTO GRAB"
+nome.TextColor3 = Color3.fromRGB(230, 230, 230)
+nome.TextScaled = true
+nome.Font = Enum.Font.GothamSemibold
+nome.TextXAlignment = Enum.TextXAlignment.Left
+nome.Parent = frame
+
+--==================================================
+-- INTERRUPTOR
+--==================================================
+
+local switch = Instance.new("TextButton")
+switch.Size = UDim2.new(0, 70, 0, 34)
+switch.Position = UDim2.new(1, -90, 0, 66)
+switch.Text = ""
+switch.AutoButtonColor = false
+switch.BorderSizePixel = 0
+switch.Parent = frame
+
+local switchCorner = Instance.new("UICorner")
+switchCorner.CornerRadius = UDim.new(1, 0)
+switchCorner.Parent = switch
+
+-- Bolinha do interruptor
+local bola = Instance.new("Frame")
+bola.Size = UDim2.new(0, 28, 0, 28)
+bola.Position = UDim2.new(1, -31, 0.5, -14)
+bola.BorderSizePixel = 0
+bola.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+bola.Parent = switch
+
+local bolaCorner = Instance.new("UICorner")
+bolaCorner.CornerRadius = UDim.new(1, 0)
+bolaCorner.Parent = bola
+
+-- Texto de status
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -40, 0, 25)
+status.Position = UDim2.new(0, 20, 0, 112)
+status.BackgroundTransparency = 1
+status.TextScaled = true
+status.Font = Enum.Font.Gotham
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Parent = frame
+
+--==================================================
+-- ATUALIZAR VISUAL
+--==================================================
+
+local function atualizarVisual()
+	if AUTO_GRAB_ATIVO then
+		switch.BackgroundColor3 = Color3.fromRGB(50, 180, 90)
+		status.Text = "ATIVADO"
+		status.TextColor3 = Color3.fromRGB(80, 220, 120)
+
+		TweenService:Create(
+			bola,
+			TweenInfo.new(0.15),
+			{
+				Position = UDim2.new(1, -31, 0.5, -14)
+			}
+		):Play()
+	else
+		switch.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+		status.Text = "DESATIVADO"
+		status.TextColor3 = Color3.fromRGB(220, 220, 220)
+
+		TweenService:Create(
+			bola,
+			TweenInfo.new(0.15),
+			{
+				Position = UDim2.new(0, 3, 0.5, -14)
+			}
+		):Play()
+	end
+end
+
+--==================================================
+-- CLICAR NO INTERRUPTOR
+--==================================================
+
+switch.MouseButton1Click:Connect(function()
+	AUTO_GRAB_ATIVO = not AUTO_GRAB_ATIVO
+
+	-- Aplica a mudança em todos os prompts
+	for prompt, _ in pairs(duracoesOriginais) do
+		if prompt and prompt.Parent then
+			configurarPrompt(prompt)
+		end
+	end
+
+	atualizarVisual()
+end)
+
+atualizarVisual()
